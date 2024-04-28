@@ -1,6 +1,11 @@
 from typing import NamedTuple
 import matplotlib.pyplot as plt
+import matplotlib.collections as mc
 import random
+import numpy as np
+import imageio
+
+plt.style.use('dark_background')
 
 class State(NamedTuple):
     x: float
@@ -129,13 +134,22 @@ class Environment:
         height = 10
         env = Environment(width, height)
         env.add_objects([
-            Obstacle(0.2, State(2, 2)),
-            Obstacle(0.2, State(3, 3)),
-            Obstacle(0.2, State(4, 4)),
-            Obstacle(0.2, State(5, 5)),
-            Obstacle(0.2, State(6, 6)),
-            Obstacle(0.2, State(7, 7)),
-            Obstacle(0.2, State(8, 8)),
+            # Obstacle(0.2, State(2, 2)),
+            # Obstacle(0.2, State(3, 3)),
+            # Obstacle(0.2, State(4, 4)),
+            # Obstacle(0.2, State(5, 5)),
+            # Obstacle(0.2, State(6, 6)),
+            # Obstacle(0.2, State(7, 7)),
+            # Obstacle(0.2, State(8, 8)),
+            Obstacle(1, State(6, 4)),
+            Obstacle(0.8, State(6.5, 5)),
+            Obstacle(0.6, State(7, 6)),
+            Obstacle(0.4, State(7, 6.8)),
+            Obstacle(0.3, State(7, 7.3)),
+            Obstacle(0.8, State(5, 3.5)),
+            Obstacle(0.6, State(4, 3)),
+            Obstacle(0.4, State(3.2, 3)),
+            Obstacle(0.3, State(2.7, 3)),
         ])
         env.set_init_and_goal_state(
             State(1, 9),
@@ -186,7 +200,7 @@ class Environment:
                 Object(self.goal_radius, State.dummy())
             )
 
-    def draw(self, tree=None, path=None):
+    def draw(self, tree=None, path=None, title=None, show = True):
         fig, ax = plt.subplots(figsize=(7, 7))
         ax.set_xlim(0, self.width)
         ax.set_ylim(0, self.height)
@@ -199,20 +213,37 @@ class Environment:
             Object(self.goal_radius, self.goal_state, color="cyan").draw(ax, label="Goal")
 
         if tree is not None:
+            lines = []
+            points = []
             for node in tree.nodes:
-                ax.scatter(node.state.x, node.state.y, color="pink")
-                if node.parent is None:
-                    continue
-                ax.plot([node.state.x, node.parent.state.x], [node.state.y, node.parent.state.y], color="pink")
+                if node.parent is not None:
+                    lines.append([(node.state.x, node.state.y), (node.parent.state.x, node.parent.state.y)])
+                    # ax.plot([node.state.x, node.parent.state.x], [node.state.y, node.parent.state.y], color="pink")
+                points.append((node.state.x, node.state.y))
+            lc = mc.LineCollection(lines, colors="pink", linewidths=1)
+            ax.add_collection(lc)
+            ax.scatter(*zip(*points), color="pink")
 
-        if path is not None:
+        if path is not None and len(path) > 0:
+            lines = []
             for i in range(len(path) - 1):
-                ax.plot([path[i].state.x, path[i+1].state.x], [path[i].state.y, path[i+1].state.y], color="purple")
-            ax.plot([path[-1].state.x, self.goal_state.x], [path[-1].state.y, self.goal_state.y], color="purple")
+                lines.append([(path[i].state.x, path[i].state.y), (path[i+1].state.x, path[i+1].state.y)])
+                # ax.plot([path[i].state.x, path[i+1].state.x], [path[i].state.y, path[i+1].state.y], color="purple")
+            lines.append([(path[-1].state.x, path[-1].state.y), (self.goal_state.x, self.goal_state.y)])
+            # ax.plot([path[-1].state.x, self.goal_state.x], [path[-1].state.y, self.goal_state.y], color="purple")
             ax.scatter(self.goal_state.x, self.goal_state.y, color="pink")
+            lc = mc.LineCollection(lines, colors="purple", linewidths=2)
+            ax.add_collection(lc)
 
-        fig.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        plt.show()
+        fig.legend()
+        # loc='center left', bbox_to_anchor=(0.9, 0.5))
+        if title is not None:
+            ax.set_title(title)
+        fig.tight_layout()
+        if show:
+            plt.show()
+
+        return fig
 
     def check_collision(self, obj: Object):
         if obj.state.x - obj.radius < 0 or obj.state.x + obj.radius > self.width:
@@ -238,3 +269,18 @@ class Environment:
             collides = self.check_collision(obj)
             if not collides:
                 return obj.state
+
+class GIFGenerator:
+    def __init__(self):
+        self.images = []
+
+    def add_frame(self, fig: plt.Figure):
+        fig.canvas.draw()
+        image = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
+        image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        self.images.append(image)
+        plt.close()
+
+    def save(self, filename: str):
+        imageio.mimsave(filename, self.images, fps=60)
+        print(f"Saved GIF to {filename}")
