@@ -178,6 +178,7 @@ class Environment:
         self.goal_state = None
         self.init_radius = 0.25
         self.goal_radius = 0.25
+        self.collision_counter = 0
 
     def add_objects(self, objects: list[Object]):
         self.objects.extend(objects)
@@ -247,12 +248,15 @@ class Environment:
 
     def check_collision(self, obj: Object):
         if obj.state.x - obj.radius < 0 or obj.state.x + obj.radius > self.width:
+            self.collision_counter += 1
             return True
 
         if obj.state.y - obj.radius < 0 or obj.state.y + obj.radius > self.height:
+            self.collision_counter += 1
             return True
 
         for other in self.objects:
+            self.collision_counter += 1
             if obj.collide(other):
                 return True
         return False
@@ -262,7 +266,7 @@ class Environment:
             Object(self.goal_radius, self.goal_state)
         )
 
-    def generate_random_state(self, obj: Object) -> Object:
+    def generate_random_state(self, obj: Object) -> State:
         while True:
             state = State(random.uniform(0, self.width), random.uniform(0, self.height))
             obj.set_state(state)
